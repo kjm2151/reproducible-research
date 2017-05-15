@@ -1,0 +1,156 @@
+---
+title: 'Coursera Reproducible Research: Project 1'
+author: "Jungmyun Kim"
+date: "5/14/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the “quantified self” movement ??? a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
+
+
+## Load Raw data
+```{r}
+
+## 1. Code for reading in the dataset and/or processing the data
+data_raw <- read.csv(file = "C:/Users/Device Admin/Documents/coursera/activity/activity.csv",
+                    header = TRUE, sep = ",")
+
+```
+
+
+## Process/transform the data
+```{r}
+## convert data type to date format
+data_raw$date <- as.POSIXct(data_raw$date, format="%Y-%m-%d")
+
+## create columns to identify weekend and weekdays
+data <- data.frame(date=data_raw$date, 
+                           weekday=tolower(weekdays(data_raw$date)), 
+                           steps=data_raw$steps, 
+                           interval=data_raw$interval)
+
+
+data<- cbind(data, 
+                      daytype=ifelse(data$weekday == "토요일" | data$weekday == "일요일", "weekend", "weekday"))
+
+
+
+## Calculate the total number of steps taken per day
+sum_data <- aggregate(data$steps, by=list(data$date), FUN=sum, na.rm=TRUE)
+
+names(sum_data) <- c("date", "steps")
+
+```
+
+## Plot Diagram
+
+```{r , echo=TRUE}
+## 2. Histogram of the total number of steps taken each day
+hist(sum_data$steps, 
+     breaks=seq(from=0, to=25000, by=2500),
+     col="gray", 
+     xlab="Number of steps", 
+     ylim=c(0, 20), 
+     main="Total number of steps taken per day (NA removed)")
+```
+
+## 3. Mean and median number of steps taken each day
+
+```{r}
+mean(sum_data$steps)
+
+median(sum_data$steps)
+```
+###### mean and median of 9354 and 10395 respectively.
+
+
+## 4. Time series plot of the average number of steps taken
+```{r}
+## What is the average daily activity pattern?
+mean_data <- aggregate(data$steps, 
+                       by=list(data$interval), 
+                       FUN=mean, 
+                       na.rm=TRUE)
+names(mean_data) <- c("5min Interval", "mean")
+```
+
+```{r, echo=TRUE}
+##Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+plot(mean_data$"5min Interval", 
+     mean_data$mean, 
+     type="l", 
+     col="blue", 
+     lwd=2, 
+     xlab="5min Interval", 
+     ylab="Average number of steps", 
+     main="Average number of steps per 5 minutes interval (NA removed)")
+```
+
+
+## 5. The 5-minute interval that, on average, contains the maximum number of steps
+```{r}
+##Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+mean_data[which(mean_data$mean == max(mean_data$mean)), 1]
+```
+
+## 6. Code to describe and show a strategy for imputing missing data
+```{r}
+## 1. Calculate and report the total number of missing values in the dataset
+sum(is.na(data$steps))
+```
+
+```{r}
+##Devise a strategy for filling in all of the missing values in the dataset
+naposi <- which(is.na(data$steps))
+mean_vector <- rep(mean(data$steps, na.rm=TRUE), times=length(naposi))
+
+data[naposi, "steps"] <- mean_vector
+
+##Create a new dataset that is equal to the original dataset but with the missing data filled in.
+sum_data <- aggregate(data$steps, by=list(data$date), FUN=sum, na.rm=TRUE)
+
+names(sum_data) <- c("date", "steps")
+```
+
+## 7. Histogram of the total number of steps taken each day after missing values are imputed
+```{r, echo=TRUE}
+##Make a histogram of the total number of steps taken each day
+hist(sum_data$steps, 
+     breaks=seq(from=0, to=25000, by=2500),
+     col="gray", 
+     xlab="Number of steps", 
+     ylim=c(0, 30), 
+     main="Total number of steps taken per day (NA removed)")
+```
+```{r}
+##Calculate and report the mean and median total number of steps taken per day
+mean(sum_data$steps)
+median(sum_data$steps)
+```
+###### mean and median of 10766 and 10766
+###### medain didn't change much after the replacements of NAs.  MEAN has been increased 15% after the replacements of NAs.
+
+## 8. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+```{r}
+library(lattice)
+
+
+mean_data <- aggregate(data$steps, 
+                       by=list(data$daytype, data$weekday, data$interval), mean)
+names(mean_data) <- c("daytype", "dayofweek", "interval", "mean")
+```
+
+```{r, echo=TRUE}
+xyplot(mean ~ interval | daytype, mean_data, 
+       type="l", 
+       lwd=1, 
+       xlab="Interval", 
+       ylab="Number of steps", 
+       layout=c(1,2))
+```
